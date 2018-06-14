@@ -77,11 +77,13 @@ float SideSlipAngle = 0;
 unsigned ReversedGear = 0;
 unsigned ReversedGear_UB = 0;
 unsigned VehicleSpeed_QF = 0;
-unsigned VehicleSpeed_UB = 0;
+unsigned VehicleSpeed_UB = 1;
 unsigned YawRate_QF = 0;
-unsigned YawRate_UB = 0;
+unsigned YawRate_UB = 1;
 unsigned SRR3T_MsgCounter_TrackerMain = 0;
 unsigned SRR3T_CRC_TrackerMain = 0;
+
+  int wheelCircum = 0.06;
 
 Timer t;
 vs_CANmessage canMessage20;
@@ -97,8 +99,6 @@ void setup()
   // TWBR = 12;  // 400 kbit/sec I2C speed
   Serial.begin(38400);
 
-  //delay(1000);
-
   // Set up the interrupt pin, its set as active high, push-pull
   pinMode(intPin, INPUT);
   digitalWrite(intPin, LOW);
@@ -109,6 +109,7 @@ void setup()
   pulses = 0;
   rpm = 0;
   timeold = 0;
+
   pinMode(13, OUTPUT);
   Timer1.initialize(10000); // initialize timer1, and set a 1/2 second period
   Timer1.attachInterrupt(callback); // attaches callback() as a timer overflow interrupt
@@ -123,8 +124,8 @@ void setup()
   SPI.setClockDivider(SPI_CLOCK_DIV2);         // Set SPI to run at 8MHz (16MHz / 2 = 8 MHz)
 
   //Read speed and yaw every 20
-  t.every(20, readYaw);
-  t.every(20, readSpeed);
+  t.every(19, readYaw);
+  t.every(19, readSpeed);
 
   //send to CAN
   t.every(20, send20msMSGs);
@@ -132,7 +133,7 @@ void setup()
   t.every(200, send200msMSGs);
 
   //print values for debugging purpose
-  //t.every(30, printValues);
+  //t.every(100, printValues);
 
 
 }
@@ -175,19 +176,25 @@ void loop()
   // Must be called before updating quaternions!
   myIMU.updateTime();
 
+  //update
+    MahonyQuaternionUpdate(myIMU.ax, myIMU.ay, myIMU.az, myIMU.gx*DEG_TO_RAD,
+                         myIMU.gy*DEG_TO_RAD, myIMU.gz*DEG_TO_RAD, myIMU.my,
+                         myIMU.mx, myIMU.mz, myIMU.deltat);
+
 }//end of loop
 
-void readSpeed() {
+void readSpeed() { //[m/s]
   if (millis() - timeold >= delaytime1) {
       //Don't process interrupts during calculations
       detachInterrupt(0);
       rpm = (60 * delaytime1 / pulsesperturn )/ (millis() - timeold)* pulses;
       timeold = millis();
       pulses = 0;
-      VehicleSpeed=0.06*rpm;
+      //VehicleSpeed=0.113*rpm;
+      VehicleSpeed = ((0.135*rpm * 15.165)/10)*3.6;
+  
       attachInterrupt(0, counter, FALLING);
-      //Serial.println("speed: ");
-      //Serial.print(VehicleSpeed);
+
    }
 }
 
@@ -199,40 +206,27 @@ void readYaw() {
 void printValues() {
   Serial.println("Yaw: ");
   Serial.print(YawRate);
-
   Serial.println("");
   Serial.println("Speed: ");
   Serial.print(VehicleSpeed);
 }
 
-void send20msMSGs() //TrackerMain
+//Edit radar and message name
+
+void send20msMSGs() //TM
 {
-  fill_SRR3T_TrackerMain(canMessage20 , VehicleSpeed, YawRate, SideSlipAngle, ReversedGear, ReversedGear_UB, VehicleSpeed_QF, VehicleSpeed_UB, YawRate_QF, YawRate_UB, SRR3T_MsgCounter_TrackerMain, SRR3T_CRC_TrackerMain);
+  fill_RADAR_TM(canMessage20 , VehicleSpeed, YawRate, SideSlipAngle, ReversedGear, ReversedGear_UB, VehicleSpeed_QF, VehicleSpeed_UB, YawRate_QF, YawRate_UB, SRR3T_MsgCounter_TrackerMain, SRR3T_CRC_TrackerMain);
   CAN0.sendMsgBuf(canMessage20.id, 1, canMessage20.len, canMessage20.data);
 }
 
-  void send50msMSGs()//TrackerAdditional every 50
+  void send50msMSGs()//TA every 50
 {
-  fill_SRR3T_TrackerAdditional(canMessage50 , 0, 0, 1.435, 0, 0, 0, 0, 0);
+  fill_RADAR_TA(canMessage50 , 0, 0, 1.435, 0, 0, 0, 0, 0);
   CAN0.sendMsgBuf(canMessage50.id, 1, canMessage50.len, canMessage50.data);
 }
 
-void send200msMSGs() //stateMachine every 200ms
+void send200msMSGs() //SM every 200ms
 {
-  fill_SRR3T_StateMachine(canMessage200 , 0);
+  fill_RADAR_SM(canMessage200 , 0);
   CAN0.sendMsgBuf(canMessage200.id, 1, canMessage200.len, canMessage200.data);
 }
-
-/*
-  void send50msMSGs()//TrackerAdditional every 50
-{
-  fill_SRR3T_TrackerAdditional(canMessage50 , LateralAcceleration, LongitudinalAcceleration, EffectiveWheelBase, SteeringWheelAngle, EPBStatus, TrailerConnection, SRR3T_MsgCounter_TrackAdditional, SRR3T_CRC_TrackerAdditional);
-  CAN0.sendMsgBuf(canMessage50.id, 1, canMessage50.len, canMessage50.data);
-}
-
-void send200msMSGs() //stateMachine every 200ms
-{
-  fill_SRR3T_StateMachine(canMessage200 , StateMachineCtrl);
-  CAN0.sendMsgBuf(canMessage200.id, 1, canMessage200.len, canMessage200.data);
-}
-*/
