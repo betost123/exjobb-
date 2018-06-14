@@ -80,8 +80,8 @@ unsigned VehicleSpeed_QF = 0;
 unsigned VehicleSpeed_UB = 1;
 unsigned YawRate_QF = 0;
 unsigned YawRate_UB = 1;
-unsigned SRR3T_MsgCounter_TrackerMain = 0;
-unsigned SRR3T_CRC_TrackerMain = 0;
+unsigned RADAR_MsgCounter_TM = 0;   //edit radar & msg
+unsigned RADAR_CRC_TM = 0;          //edit radar & msg
 
   int wheelCircum = 0.06;
 
@@ -211,7 +211,7 @@ void printValues() {
   Serial.print(VehicleSpeed);
 }
 
-//Edit radar and message name
+//Edit radar and message 
 
 void send20msMSGs() //TM
 {
