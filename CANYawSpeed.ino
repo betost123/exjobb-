@@ -6,7 +6,7 @@
 #include <mcp_can.h>
 #include <SPI.h>
 #include <Timer.h>
-#include "VCAN_SRR3T_Tram.h"
+#include "VCAN_RADAR_Tram.h" //edit radar
 #include <Wire.h>
 #include <TimerOne.h>
 
